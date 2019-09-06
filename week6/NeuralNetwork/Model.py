@@ -19,18 +19,16 @@ class TwoLayerNet():
          input_size: 데이터의 변수 개수 - D
          hidden_size: 히든 층의 H 개수 - H
          output_size: 클래스 개수 - C
-
          """
 
          self.params = {}
-         self.params["W1"] = std * np.random.randn(None, None)
-         self.params["b1"] = np.zeros(None)
-         self.params["W2"] = std * np.random.randn(None, None)
-         self.params["b2"] = np.zeros(None)
+         self.params["W1"] = std * np.random.randn(input_size, hidden_size)
+         self.params["b1"] = np.zeros(hidden_size)
+         self.params["W2"] = std * np.random.randn(hidden_size, output_size)
+         self.params["b2"] = np.zeros(output_size)
 
     def forward(self, X, y=None):
         """
-
         X: input 데이터 (N, D)
         y: 레이블 (N,)
 
@@ -41,28 +39,34 @@ class TwoLayerNet():
 
         """
 
-        W1, b1 = self.None, self.None
-        W2, b2 = self.None, self.None
-        N, D = None.shape
+        W1, b1 = self.params['W1'], self.params["b1"]
+        W2, b2 = self.params["W2"], self.params["b2"]
+        N, D = X.shape
 
         # 여기에 p를 구하는 작업을 수행하세요.
 
-        h = None
-        a = None
-        scores = None
+        h = np.dot(X, W1) + b1
+        a = np.maximum(0, h) #ReLU
+        # scores = a
 
-        o = None
-        p = None
+        
+        o = np.dot(a, W2) + b2
+        
+        # 소프트 맥스
+        p = np.exp(o)/np.sum(np.exp(o), axis = 1).reshape(-1,1)
+        
 
         if y is None:
             return p, a
 
         # 여기에 Loss를 구하는 작업을 수행하세요.
+        Loss = p 
+        n = y.shape[0]
 
-        Loss = None
-
-        LL = None  # get LogLikelihood
-        Loss = None  # get p loss
+        LL = 0
+        LL -= np.log(p[np.arange(n), y]).sum()  # get LogLikelihood
+        Loss = LL / n  # get p loss
+#        print(Loss)
 
         return Loss
 
@@ -79,26 +83,34 @@ class TwoLayerNet():
         여기서는 Gradient Descent방식으로 가중치 갱신까지 합니다.
 
         """
-        W1, b1 = self.None, self.None
-        W2, b2 = self.None, self.None
+        W1, b1 = self.params['W1'], self.params["b1"]
+        W2, b2 = self.params["W2"], self.params["b2"]
 
-        N = None.shape[0] # 데이터 개수
+        N = X.shape[0] # 데이터 개수
         grads = {}
 
         p, a = self.forward(X)
 
+        #t는 인덱스 레이블 y를 One hot 벡터로 바꾼 것
+        t = np.zeros((y.shape[0], 10)) # 10은 output size
+        t[np.arange(y.shape[0]), y] = 1
+        
         # 여기에 각 파라미터에 대한 미분 값을 저장하세요.
+        dp = p-t
 
-        dp = None
-          # p-y
-
-        da = None
-
-        grads["W2"] = None
-        grads["b2"] = None
-        grads["W1"] = None
-        grads["b1"] = None
-
+        da = a.copy()
+        
+        grads["W2"] = np.dot(da.T, dp/len(y))
+        grads["b2"] = np.sum(dp/len(y), axis=0)
+        
+        pLpA = np.dot(dp, W2.T) # 파셜l/파셜a                            
+        pApH = da[da!= 0] = 1 #relu함수 미분
+        pLpH = np.dot(pLpA, pApH)
+    
+        
+        grads["W1"] = np.dot(X.T, pLpH)
+        grads["b1"] = np.sum(pLpH, axis=0)
+        
         self.params["W2"] -= learning_rate * grads["W2"]
         self.params["b2"] -= learning_rate * grads["b2"]
         self.params["W1"] -= learning_rate * grads["W1"]
@@ -107,6 +119,6 @@ class TwoLayerNet():
     def accuracy(self, X, y):
 
         p, _ = self.forward(X)
-        y_pred = None
+        y_pred =  np.argmax(p, axis = 1)
 
         return np.sum(y_pred==y)/len(X)
